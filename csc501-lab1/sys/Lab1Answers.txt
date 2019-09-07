@@ -1,0 +1,44 @@
+Q1] What are the advantages and disadvantages of each of the two scheduling policies? Also, give the advantages and disadvantages of the round robin scheduling policy originally implemented in Xinu.
+
+Answer 1]
+-Exp-dist scheduler:
+	Advantages		
+		1. It solves the starvation problem by adding a degree of randomness.
+		2. It allows preemption allowing another process to take over cpu. Preemption also allows for higher degrees of	 			  concurrency and better response time. 
+		3. It gives the programmer a degree of freedom by adjusting the value of lambda to tune the distribution as per the needs.
+
+	Disadvantages
+		1. Process with highest priority may not get scheduled right away. This may be a problem in cases where the system is expected to 			  finish higher priority processes before others.
+		2. The randomness adds a little non determinism. The exact behavior of the scheduler can only be aprroximated and not predicted.
+		  
+-Linux-like scheduler:
+	Advantages
+		1. It solves the starvation problem since each epoch will guarentee that every runnable process will run.
+		2. The algorithm has dynamic preference of picking a process as goodness and quantum keep changing, so simply adding a process with 			   high priority to stall cpu will not affect performance significantly.
+		3. The scheduling process is deterministic and the behaviour can be predicted given a sequence of input processes.
+		  
+	Disadvantages
+		1. It consumes extra memory and also adds to extra cpu overhead. For a large number of processes the overhead will become 			   significant.
+		2. No preemption. If a process gets a quantum, whatever the value, it runs its entire duration before giving away the cpu.
+		3. If priorities are changed, they will not reflect till the next epoch. This makes the scheduler a little less robust to changes.
+
+-Default Round Robin in Xinu:
+	Advantages
+		1. Easy to implement.
+		2. Much less CPU overhead than other algorithms.
+	
+	Disadvantages
+		1. Low priority processes may never get scheduled. There could be starvation.
+		2. Total number of context switches for preemption is high. This will add to a higher context switch overhead.
+		3. Each process gets the exact same quantum unless the yield the CPU. However, some proessses may need more CPU slices than others.
+__________________________________________________________________________________________________________________________________________________
+
+Q2] Describe the way each of the schedulers affects the NULL process.
+
+Answer 2]
+
+Exp-dist scheduler will schedule the NULL process only when ready queue has no other process to run. The smallest random number generated is 0 and scheduler will try to pick something thats larger than 0. Whenever there is no process that fits the criterion, NULL process or NULLPROC is run for default quantum.
+   
+Linux-like scheduler will try to schedule NULLPROC when ready queue is empty. However since NULLPROC has goodness 0 and quantum 0, it won't run.
+__________________________________________________________________________________________________________________________________________________
+

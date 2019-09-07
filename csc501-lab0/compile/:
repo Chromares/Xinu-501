@@ -1,0 +1,29 @@
+000108f4 <printtos>:
+   108f4:	55                   	push   %ebp
+   108f5:	83 ec 28             	sub    $0x28,%esp
+   108f8:	89 6c 24 08          	mov    %ebp,0x8(%esp)
+   108fc:	89 64 24 04          	mov    %esp,0x4(%esp)
+   10900:	c7 04 24 1c 87 01 00 	movl   $0x1871c,(%esp)
+   10907:	e8 40 51 00 00       	call   15a4c <kprintf>
+   1090c:	c7 44 24 14 08 00 00 	movl   $0x8,0x14(%esp)
+   10913:	00 
+   10914:	c7 44 24 10 09 00 00 	movl   $0x9,0x10(%esp)
+   1091b:	00 
+   1091c:	c7 44 24 0c 01 00 00 	movl   $0x1,0xc(%esp)
+   10923:	00 
+   10924:	c7 44 24 08 02 00 00 	movl   $0x2,0x8(%esp)
+--
+   1420d:	e8 e2 c6 ff ff       	call   108f4 <printtos>
+   14212:	b8 00 00 00 00       	mov    $0x0,%eax
+   14217:	c9                   	leave  
+   14218:	c3                   	ret    
+   14219:	66 90                	xchg   %ax,%ax
+   1421b:	90                   	nop
+
+0001421c <stacktrace>:
+   1421c:	55                   	push   %ebp
+   1421d:	57                   	push   %edi
+   1421e:	56                   	push   %esi
+   1421f:	53                   	push   %ebx
+   14220:	83 ec 1c             	sub    $0x1c,%esp
+   14223:	8b 44 24 30          	mov    0x30(%esp),%eax

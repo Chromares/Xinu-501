@@ -1,0 +1,71 @@
+Q1. 1
+	i)  Priority Ceiling : Use semaphores to assign process priorities dynamically. Each resource is assigned a priority ceiling, which is a priority equal to the highest priority of any task which uses this lock. It enusures that the new or the ceiling priority taken by the process holding the lock is highest and that no other process has a prioirty higher than this value. Priority ceiling can introduce unnecessary blocking but the worst-case blocking is still less than priority inheritance.
+
+	ii) Random Boosting : While tasks are holding locks, their priority is randomly boosted till they release the held locks. This solution is used in Microsoft Windows. If the low priority process runs long enough, after unlocks the shared resource, the high priority process can directly take the lock. If the low priority process does not get enough CPU time to finish the first time, it will get another chance during the next round of scheduling.
+
+
+Q1. 2 Priority inversion can be checked by designing a simple test case where three processes, A, B, C with increasing priorites can be created. A, being the lowest will be created first to lock a shared resource process C will wait for. It can be shown that proper implementation of priority inversion should prevent B from running. The original Xinu implementation will not be able to do so. Output from task1.c demonstrates this as below:
+
+For the same sequence and the same processes, we get the following resultsfor the situtaion described above:
+
+Reader/Writer locks
+
+a: Acquiring lock
+a: Acquired lock
+c: Acquiring lock
+c: Acquired lock
+a: Relased lock
+c: Relased lock
+b: Started running
+bbbbbbbbbbbbbbbbbbbb (1000000)
+b: Completed running
+
+___________________
+
+Semaphores
+
+a: Acquiring lock
+a: Acquired lock
+c: Acquiring lock
+b: Started running
+bbbbbbbbbbbbbbbbbbbb (1000000)
+b: Completed running
+c: Acquired lock
+c: Relased lock
+a: Relased lock
+
+
+As evident from the output, in case of reader/writer locks, B was forced to wait for C to finish in order to run whereas with semaphores, B got a chance to run earlier than C, thereby causing priority inversion.
+
+Q2. Since multiple readers can acquire the lock and eventually call try_update(), there could readers and writers accessing the same global_buf for reading and writing, where at least 10 threads can access the global_buf for writing it, creating data inconsistency. None of the fields in buffer_t are protected with mutual exclusion to prevent multiple writers and readers from accessing global_buf and its fields at once.
+
+	Reader1			Reader2
+	
+	do_update()		
+				do_update()
+
+	try_update()
+				try_update()
+
+	acquire(global_sem)
+				acquire(global_sem)
+
+	buffer_add(...)		
+				buffer_add(...)
+				memcpy(...)
+	memcpy(...)
+	buf->len += size
+				buf->len += size
+				buf->buf[buf->len] = '\0'
+	buf->buf[buf->len] = '\0'
+	.
+	.
+	.
+	.
+	.
+
+10 threads can acquire global_semaphore at once can cause data incosistency as shown. 
+
+References
+[1] https://en.wikipedia.org/wiki/Priority_inversion
+[2] https://docs.microsoft.com/en-us/windows/desktop/procthread/priority-inversion

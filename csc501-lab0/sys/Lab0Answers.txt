@@ -1,0 +1,185 @@
+Answer 1]
+	
+	Using printprocstks and printsegaddress, we get an idea about Xinu's memory layout. Extending test.c from https://people.engr.ncsu.edu/gjin2/Classes/501/Fall2018/assignments/PA0/test.c, the process proc X called printsegaddress functions as well. This gave us more information regarding memory layout. Also printprocstks showed the limits for Proc X as well, different from that of Main so each process has its own frame.
+
+Moreover main and Proc X share the same Text, Data, BSS segments which could be a policy implemented by Xinu.
+
+Task 4 (printprocstks)
+Process [proc X]
+pid: 48
+	priority: 20
+	base: 0x00ffdff8
+	limit: 0x00ffcffc
+	len: 4092
+	pointer: 0x00ffdf24
+Process [main]
+pid: 49
+	priority: 20
+	base: 0x00ffeff8
+	limit: 0x00ffdffc
+	len: 4092
+	pointer: 0x00ffef20
+
+Proc X (printsegaddress)
+Current: etext[0x00018f27]=006e6500, edata[0x0001e5c0]=00000001, ebssa[0x000278f8]=00027ef6
+
+Main (printsegaddress)
+Current: etext[0x00018f27]=006e6500, edata[0x0001e5c0]=00000001, ebssa[0x000278f8]=00027ef6
+
+
+A rough diagram could be as follows:
+
+
+	___________ _____0x0 (Start)
+	|	  |
+	|    T    |
+	|    E	  |
+	|    X    |
+	|    T    |
+	|_________| ____0x00018f27 (End of Text)
+	|	  |
+	|    D    |
+	|    A	  |
+	|    T    | 
+	|    A    |
+	|_________| ____0x0001e5c0 (End of Data)
+	|	  |
+	|    B    |
+	|    S    |
+        |    S    |
+	|_________| ____0x000278f8 (End of BSS)
+	|	  |
+	|_________|
+	|	  |
+	|_________|
+	|	  |
+	|_________| ____0x00ffcffc (Limit of proc X)   	  _______
+	|	  |					     |
+	     .						     |
+	     .						     |
+	|_________|					     |	4092 bytes
+	|	  |					     |
+	|_________|					     |
+	|	  |					     |
+	|_________| ____0x00ffdff8 (Base of proc X)	  ___|___
+	|    4	  |
+	|__bytes__| ____0x00ffdffc (Limit of Main)	  _______
+	|	  |					     |
+	|_________|					     |	4092 bytes
+	     .						     |
+	     .						     |
+	|	  |					     |
+	|_________| ____0x00ffeff8 (Base of Main)	  ___|___
+
+
+____________________________________________________________________________________________________________________________________________
+
+Answer 2]
+
+	Register content of esp0 is for instruction address 0x000145b5 i.e <main + 0x5A>, while register content for esp1 is at instruction address 0x00010986 <printtos>; at 0x000145b5 main contains "call   10968 <printtos>" which results in pushing next instruction address as return address onto the stack. This moves esp by 4 addresses below. For reference esp3 = esp2 - 0x18 which is the memory allocated for function call printtos.
+
+	|________________________________|		^
+esp0____|________________________________|		|
+esp1____|__Return address <main + x>_____|		|
+esp2____|____________ebp1________________|		|
+	|________________________________|		|	High address
+			.	
+			.
+	|________________________________|
+	|________________________________|		|
+	|________________________________|		|	low address
+esp3____|________________________________|		\/
+
+
+Between the mentioned two points the registers. Using gdb and breakpoints, The transition and contents in between are as follows:
+
+(gdb) info break
+
+Num     Type           Disp Enb Address    What
+1       breakpoint     keep y   0x000145b5 
+2       breakpoint     keep y   0x00010968
+
+at call <printtos> in main:
+Breakpoint 1, 0x000145b5 in ?? ()
+(gdb) info registers 
+	...
+esp            0xffefc0	0xffefc0
+ebp            0xffefec	0xffefec
+	...
+(gdb) si
+
+at <printtos> inside printos:
+(gdb) info registers
+	..
+esp            0xffefbc	0xffefbc
+	..
+
+Something got pushed onto stack moving esp by 4 addresses.
+
+(gdb) x/100x $sp
+0xffefbc:	0x000145ba	0x00019a8b	....
+.....		.....		.....		....
+.
+.
+.
+OR
+
+(gdb) x/x 0xffefbc
+0xffefbc:	0x000145ba
+(gdb) x/x 0xffefc0
+0xffefc0:	0x00019a8b
+
+That value 0x000145ba is nothing but address of next instruction inside <main>
+This can be verified
+
+$ objdump -d xinu.elf | grep -A 3 "145b5"
+
+	145b5:	e8 ae c3 ff ff       	call   10968 <printtos>
+	145ba:	c7 04 24 9f 9a 01 00 	movl   $0x19a9f,(%esp)
+	145c1:	e8 ee 19 00 00       	call   15fb4 <kprintf>
+
+So thats indeed the return address stored onto stack before moving to <printtos>
+
+____________________________________________________________________________________________________________________________________________
+
+Answer 3]
+
+	Check xinu.elf
+
+$ objdump -d xinu.elf | grep -A 17 "printtos" //Removing irrelavent lines
+00010968 <printtos>:
+   10968:	53                   	push   %ebx
+   10969:	83 ec 18             	sub    $0x18,%esp
+   1096c:	..
+		..							_____
+   10980:	89 54 24 08          	mov    %edx,0x8(%esp)		  |
+		..							  |
+   10987:	89 44 24 04          	mov    %eax,0x4(%esp)		  |	Arguments for kprintf
+   1098b:	c7 04 24 57 90 01 00 	movl   $0x19057,(%esp)	       ___|___
+   10992:	e8 1d 56 00 00       	call   15fb4 <kprintf>
+   		..
+   1099f:	89 54 24 08          	mov    %edx,0x8(%esp)			
+  		..
+   109a6:	89 44 24 04          	mov    %eax,0x4(%esp)
+   109aa:	c7 04 24 70 90 01 00 	movl   $0x19070,(%esp)
+   109b1:	e8 fe 55 00 00       	call   15fb4 <kprintf>
+			....
+	And so on because of the kprintf inside loop
+
+It can be observed that the local variables that were declared to save values of %esp, %ebp or even the index for loop were never pushed onto the stack. Since they were not used as arguments or references anywhere, compiler does not push whereas the arguments for kprintf were the only ones to get pushed onto stack. asm() managed to directly use addresses to save values to local variables as. This must be code optimization phase of the compiler
+
+1096c:	89 25 94 32 02 00    	mov    %esp,0x23294
+10972:	89 2d 90 32 02 00    	mov    %ebp,0x23290
+
+The compiler seemed to have directly used registers to evaluate arguments before pushing them on stack. Tracing one of them:
+
+(esp + 0x8) became	= mov    0x23294,%eax
+				..
+		
+			  add    $0x20,%eax
+
+Without optimization, the local variables will get pushed onto the stack.
+
+____________________________________________________________________________________________________________________________________________
+
+
